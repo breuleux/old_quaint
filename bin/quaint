@@ -1,0 +1,120 @@
+#!/usr/bin/python3.1
+
+import optparse
+import sys
+# from quaint.tools.utils import attrdict
+
+if __name__ == "__main__":
+
+    parser = optparse.OptionParser()
+    parser.add_option("-s", "--string", dest="s",
+                      help="String to evaluate, use instead of a file.")
+    parser.add_option("--nolines",
+                      action="store_true", dest="nolines", default=False,
+                      help="Do not display line numbers.")
+
+    options, raw_args = parser.parse_args()
+
+    def contents_and_writeto():
+        expr = options.s
+        if expr is not None:
+            return (expr, open(arguments[0], "w") if arguments else sys.stdout)
+        else:
+            return (open(arguments[0]).read(), open(arguments[1], "w") if arguments[1:] else sys.stdout)
+
+    def with_rich_error(thunk):
+        from quaint.format import \
+            HTMLFormat, \
+            TermColorFormat, \
+            TermPlainFormat, \
+            rich_error
+
+        try:
+            return thunk()
+        except QuaintSyntaxError as e:
+            e = rich_error(e)
+            if hasattr(e, "highlight"):
+                print(e.highlight(format = TermColorFormat(True),
+                                  context = 2), file = sys.stderr)
+            else:
+                print("QuaintSyntaxError:", e)
+            sys.exit(0)
+
+    def decode_and_parse(contents):
+        from quaint.format import HTMLFormat, TermColorFormat, rich_error
+        return with_rich_error(lambda: parser.parse(decode(contents)))
+
+    command, *arguments = raw_args
+
+    if command in ("decode", "de"):
+        from quaint.parse import decode
+        contents, writeto = contents_and_writeto()
+        print(decode(contents), file = writeto)
+
+    elif command in ("encode", "en"):
+        from quaint import encode
+        contents, writeto = contents_and_writeto()
+        print(encode(contents), file = writeto)
+
+    elif command in ("parse", "pa"):
+        from quaint import parser, decode, QuaintSyntaxError
+        contents, writeto = contents_and_writeto()
+        x = decode_and_parse(contents)
+        print(x, file = writeto)
+
+    # elif command in ("ast", "as"):
+    #     from quaint import parser, decode, QuaintSyntaxError
+    #     from quaint.compile import ast2
+    #     contents, writeto = contents_and_writeto()
+    #     x = decode_and_parse(contents)
+    #     e = with_rich_error(lambda: ast2.convert(x).to_ast2(attrdict(externals = {})))
+    #     print(e, file = writeto)
+
+    elif command in ("highlight", "hl"):
+        from quaint import QuaintSyntaxError, parser, decode
+        from quaint.format import \
+            ASTHighlighter, HTMLFormat, TermColorFormat, basic_html_style
+
+        contents, writeto = contents_and_writeto()
+        x = decode_and_parse(contents)
+
+
+        if writeto is sys.stdout:
+            stuff = ASTHighlighter(TermColorFormat(not options.nolines)).highlight(x)
+            print(stuff)
+
+        else:
+            html = codehl.ASTHighlighter(HTMLFormat(True, False)).highlight(x)
+            style = """
+
+            .operator {color: blue}
+            .identifier {color: black}
+            .numeral {color: magenta}
+            .string {color: red}
+            .string_vi {color: magenta}
+            .sequence {color: black; font-weight: bold}
+            .macro {color: black; font-weight: bold}
+            .macro_operator {color: black; font-weight: bold}
+            .definition {color: green; font-weight: bold}
+            .symbol {color: brown}
+
+            .default {color: grey; font-style: italic}
+
+            """
+
+            print("""
+            <html>
+            <head>
+              <title>Woohoo!!!</title>
+              <style type="text/css">
+              %(basic_html_style)s
+              %(style)s
+              </style>
+            </head>
+            <body>
+            %(html)s
+            </body>
+            </html>
+            """ % locals(), file = writeto)
+    else:
+        print("Unknown command: %s\nOptions are: encode (en), decode (de), highlight (hl)" % command, file = sys.stderr)

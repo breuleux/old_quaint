@@ -1,0 +1,33 @@
+
+quaints.format
+===============
+
+This package is for formatting Quaint source code. It can be used to
+highlight excerpts, do syntax highlighting, on the terminal or as
+HTML.
+
+Exports formats, highlight(), rich_error(), and others.
+
+
+codehl.py
+
+  Exports the code_highlight method, which takes a level 1 AST and a
+  format, and spits out source code highlighted in that format.
+
+
+errors.py
+
+  Exports the rich_error() function, which can convert some
+  QuaintSyntaxErrors into RichQuaintSyntaxErrors. Rich errors have
+  very informative messages and a .highlight() method to show where
+  the error is located. So when catching QuaintSyntaxError as e, try
+  print(quaints.format.rich_error(e).highlight()).
+
+
+format.py
+
+  Defines "formats" for highlighting purposes: TermPlainFormat,
+  TermColorFormat and HTMLFormat. Also exports the "highlight"
+  function.
+
+

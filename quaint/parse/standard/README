@@ -1,0 +1,44 @@
+
+quaint.parse.standard
+=======================
+
+This submodule defines the Quaint programming language, using tools
+in quaint.parse.generic.
+
+It exports encode, decode, parser and a few others.
+
+
+characters.py
+
+  Defines what characters can be in an identifier.
+
+
+codec.py
+
+  Defines the delimiters for identifiers and what characters can be
+  found in an identifier. Also defines all available digraphs, as well
+  as many ways to encode many characters.
+
+  Exports the encode and decode functions.
+
+
+operators.py
+
+  Defines the fixity of all major operators, and their priority with
+  respect to each other. Exports op_groups and op_order, the latter of
+  which can be used to determine whether an operator has priority over
+  another.
+
+  Also exports is_assignment and is_custom, to check if an operator is
+  an assignment operator or a custom operator.
+
+  * operators.pickle is a cache of op_groups and op_order, since it is
+    expensive to compute them. The function
+    quaint.parse.standard.operators.remove_cache can be used to
+    remove it, though it will be remade on the next import.
+
+
+parse.py
+
+  Exports a parser for the Quaint syntax.
+

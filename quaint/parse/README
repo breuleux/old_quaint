@@ -1,0 +1,16 @@
+
+quaint.parse
+==============
+
+The parsing submodule is organized within two sub-modules:
+
+generic:
+    This contains various classes and utilities that can be
+    instantiated with various design choices (different operator
+    priorities, etc.)
+
+standard:
+    All the standard Quaint semantics are contained there (how
+    characters are encoded, with what delimiters, what are the
+    operators, their priorities, etc.)
+

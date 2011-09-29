@@ -1,0 +1,17 @@
+
+Quaint is a new programming language. How quaint!
+
+Quaint aims to be a dynamic programming language that offers several
+optional static properties and is easy to optimize in the average
+case.
+
+It currently in the design phase, so nothing about it is set in stone
+yet.
+
+Project page/blog: http://breuleux.net/quaint
+
+Check the development blog for insight on the design process and/or to
+give feedback.
+
+This particular implementation is in Python 3, but once everything is
+in working order, Quaint will be reimplemented in Quaint.

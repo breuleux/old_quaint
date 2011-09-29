@@ -1,0 +1,67 @@
+
+quaint.parse.generic
+======================
+
+This directory contains tools for quaint-like syntaxes. This file is
+an overview of what is here and what behavior can be customized.
+
+
+ast.py
+
+  Contains data structures for the abstract syntax tree. The major
+  node types are: Identifier, Numeral, Bracketed, StringVI, Operator
+  (Prefix, Infix, Postfix), OpApply.
+
+
+codec.py
+
+  Codec class, which allows encoding and decoding Unicode strings.
+  You can define:
+
+  * The delimiters for identifiers: is ♥ encoded as \heart\, `heart`,
+    <heart>...?
+  * The characters allowed in identifiers
+  * The list of digraphs (must be digraphs!).
+  * The list of possible identifiers for select unicode characters.
+
+
+error.py
+
+  This is just the QuaintSyntaxError class.
+
+
+location.py
+
+  Location class, utilities such as merge_locations.
+
+
+op.py
+
+  You can group several Operators in an OperatorGroup with some
+  associativity, and you can use OpOrder to define priority between
+  operators from different groups.
+
+
+parse.py
+
+  The Parser class will create an object that can be used to parse
+  Quaint code.
+
+  The following can be specified:
+
+  * character classes
+    * Which characters are allowed as the first and subsequent
+      characters of an identifier.
+    * Which characters are operators and how they mingle when there is
+      no whitespace between them.
+
+  * operator roles
+    * The fixity of operators.
+    * The pairwise priority of each operator with each other operator
+      (there are tools to make this easy).
+
+
+The "standard" subpackage defines everything for the Quaint
+language. If you want to mess around with Quaint' syntax, you can
+look at how these packages interact.
+
