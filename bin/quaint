@@ -6,16 +6,46 @@ import sys
 
 if __name__ == "__main__":
 
-    parser = optparse.OptionParser()
-    parser.add_option("-s", "--string", dest="s",
-                      help="String to evaluate, use instead of a file.")
-    parser.add_option("--nolines",
-                      action="store_true", dest="nolines", default=False,
-                      help="Do not display line numbers.")
+    usage = """quaint <command> [options]
 
-    options, raw_args = parser.parse_args()
+Where command is one of:
+
+decode, de: quaint decode <source> [destination] [options]
+  Decode the source file, assuming the file is encoded using the
+  quaint encoding. The coded ASCII sequences will be printed as UTF-8
+  in the destination file, or to stdout if no destination is provided.
+  The -s option can be used instead of the source argument.
+
+encode, en: quaint encode <source> [destination] [options]
+  Encode a UTF-8-encoded source file in the quaint encoding. All
+  Unicode characters will be encoded by readable ASCII sequences, as
+  per the quaint encoding's specification.
+  The -s option can be used instead of the source argument.
+
+highlight, hl: quaint highlight <source> [destination] [options]
+  Pretty-print the source file, assuming the file is encoded using the
+  quaint encoding. If destination is provided, the source will be
+  pretty-printed in HTML. Else, the source will be pretty-printed in
+  the console.
+  The -s option can be used instead of the source argument.
+
+parse, pa: quaint parse <source> [destination] [options]
+  This is for debug right now."""
+
+    oparser = optparse.OptionParser(usage = usage)
+    oparser.add_option("-s", "--string", dest="s",
+                       help="String to evaluate, use instead of a file.")
+    oparser.add_option("--nolines",
+                       action="store_true", dest="nolines", default=False,
+                       help="Do not display line numbers.")
+
+    options, raw_args = oparser.parse_args()
 
     def contents_and_writeto():
+        if not arguments:
+            print("You must provide a source file for this command!")
+            print("You can get help with 'quaint --help'")
+            sys.exit(0)
         expr = options.s
         if expr is not None:
             return (expr, open(arguments[0], "w") if arguments else sys.stdout)
@@ -43,6 +73,10 @@ if __name__ == "__main__":
     def decode_and_parse(contents):
         from quaint.format import HTMLFormat, TermColorFormat, rich_error
         return with_rich_error(lambda: parser.parse(decode(contents)))
+
+    if not raw_args:
+        oparser.print_help()
+        sys.exit(0)
 
     command, *arguments = raw_args
 
