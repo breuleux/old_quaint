@@ -11,7 +11,8 @@ __all__ = ['delim', 'delim_start', 'delim_end',
 delim = r"``"
 delim_start, delim_end = delim
 
-idchars = 'a-zA-Z0-9\\-=~<>/|\'"^`'.replace(delim_start, "").replace(delim_end, "")
+# a-zA-Z0-9 and \-=~<>/|'"^`
+idchars = 'a-zA-Z0-9\\\\\\-=~<>/|\'"^`'.replace(delim_start, "").replace(delim_end, "")
 
 digraphs = [
     # Standards digraphs
@@ -68,8 +69,8 @@ annotated_identifiers = [
     (("$acute",), "\u00B4"),
     (("&AE", "$AElig",), "\u00C6"),
     (("&ae", "$aelig",), "\u00E6"),
-    (("A`", "Agr", "$Agrave",), "\u00C0"),
-    (("a`", "agr", "$agrave",), "\u00E0"),
+    (("A\\", "Agr", "$Agrave",), "\u00C0"),
+    (("a\\", "agr", "$agrave",), "\u00E0"),
     (("$alefsym",), "\u2135"),
     (("$Alpha",), "\u0391"),
     (("$alpha",), "\u03B1"),
@@ -115,8 +116,8 @@ annotated_identifiers = [
     (("e'", "eac", "$eacute",), "\u00E9"),
     (("E^", "Eci", "$Ecirc",), "\u00CA"),
     (("e^", "eci", "$ecirc",), "\u00EA"),
-    (("E`", "Egr", "$Egrave",), "\u00C8"),
-    (("e`", "egr", "$egrave",), "\u00E8"),
+    (("E\\", "Egr", "$Egrave",), "\u00C8"),
+    (("e\\", "egr", "$egrave",), "\u00E8"),
     (("$empty",), "\u2205"),
     (("$emsp",), "\u2003"),
     (("$ensp",), "\u2002"),
@@ -151,8 +152,8 @@ annotated_identifiers = [
     (("I^", "Ici", "$Icirc",), "\u00CE"),
     (("i^", "ici", "$icirc",), "\u00EE"),
     (("$iexcl",), "\u00A1"),
-    (("I`", "Igr", "$Igrave",), "\u00CC"),
-    (("i`", "igr", "$igrave",), "\u00EC"),
+    (("I\\", "Igr", "$Igrave",), "\u00CC"),
+    (("i\\", "igr", "$igrave",), "\u00EC"),
     (("$image",), "\u2111"),
     (("infinity", "$infin", "infty",), "\u221E"),
     (("integral", "$int",), "\u222B"),
@@ -205,8 +206,8 @@ annotated_identifiers = [
     (("o^", "oci", "$ocirc",), "\u00F4"),
     (("&OE", "$OElig",), "\u0152"),
     (("&oe", "$oelig",), "\u0153"),
-    (("O`", "Ogr", "$Ograve",), "\u00D2"),
-    (("o`", "ogr", "$ograve",), "\u00F2"),
+    (("O\\", "Ogr", "$Ograve",), "\u00D2"),
+    (("o\\", "ogr", "$ograve",), "\u00F2"),
     (("$oline",), "\u203E"),
     (("$Omega",), "\u03A9"),
     (("$omega",), "\u03C9"),
@@ -294,8 +295,8 @@ annotated_identifiers = [
     (("up", "$uarr",), "\u2191"),
     (("U^", "Uci", "$Ucirc",), "\u00DB"),
     (("u^", "uci", "$ucirc",), "\u00FB"),
-    (("U`", "Ugr", "$Ugrave",), "\u00D9"),
-    (("u`", "ugr", "$ugrave",), "\u00F9"),
+    (("U\\", "Ugr", "$Ugrave",), "\u00D9"),
+    (("u\\", "ugr", "$ugrave",), "\u00F9"),
     (("uml",), "\u00A8"),
     (("$upsih",), "\u03D2"),
     (("$Upsilon",), "\u03A5"),
