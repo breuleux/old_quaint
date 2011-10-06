@@ -42,7 +42,7 @@ parse, pa: quaint parse <source> [destination] [options]
     options, raw_args = oparser.parse_args()
 
     def contents_and_writeto():
-        if not arguments:
+        if not arguments and not options.s:
             print("You must provide a source file for this command!")
             print("You can get help with 'quaint --help'")
             sys.exit(0)
