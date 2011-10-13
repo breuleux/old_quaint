@@ -14,7 +14,7 @@
 
 ;;;###autoload
 (defgroup quaint nil
-  "Customization group for the Diamonds programming language."
+  "Customization group for the Quaint programming language."
   :group 'languages)
 
 ;;;###autoload
@@ -52,7 +52,7 @@
 
 ;;;###autoload
 (defgroup quaint-faces nil
-  "Faces used to highlight the Diamonds language."
+  "Faces used to highlight the Quaint language."
   :group 'quaint)
 
 (defun quaint-stock-face (light dark &optional bold)
@@ -807,6 +807,9 @@ line, if a string or a list spans several lines."
               (let ((ci (quaint-current-indent)))
                 (throw 'return (list position ci (+ ci quaint-indent))))))
 
+          ;; (when (equal (quaint-next-operator) "~")
+          ;;   )
+
           (let* ((state (syntax-ppss))
                  (last-parens (nth 1 state)))
 
@@ -832,7 +835,9 @@ line, if a string or a list spans several lines."
                   (backward-char)
                   (when (equal (quaint-prev-operator) ":")
                     (quaint-backward-operator-strict))
-                  (goto-char (car (quaint-find-constructor nil t))))
+                  (goto-char (car (quaint-find-constructor nil t)))
+                  (when (equal (quaint-prev-operator) "~")
+                    (quaint-backward-operator-strict)))
                 (setq cc (current-column))
                 (throw 'return (list last-parens cc (+ cc quaint-indent)))))))))))
 
@@ -1305,7 +1310,7 @@ line, if a string or a list spans several lines."
       (quaint-codec-mode t))
 
   (setq major-mode 'quaint-mode)
-  (setq mode-name "Diamonds"))
+  (setq mode-name "Quaint"))
 
 (defun quaint-comment-dwim (&optional arg)
   "If no region is selected, inserts a comment at the
@@ -1401,7 +1406,7 @@ uncommented."
     (point)))
 
 (defun quaint-encode-region (&optional count)
-  "Encode the region using the Diamonds encoding. Unicode
+  "Encode the region using the Quaint encoding. Unicode
 characters are encoded, e.g. λ as `lambda` and ← as
 <-. Expressions that normally encode characters are encoded as
 well, e.g. `lambda` will become ``lambda`` and <- will
