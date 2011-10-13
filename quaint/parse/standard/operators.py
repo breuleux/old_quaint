@@ -119,7 +119,7 @@ else:
 
         # Assignment
         assign = FGroup('right', is_assignment, 'x←y', 'x⇒y', 'x=y'),
-        colon = Group('right', 'x:y'),
+        colon = Group('none', 'x:y'),
         cond = Group('left', 'x|y'),
         type = Group('left', 'x::y', 'x:<y', 'x>:y'),
         agglutinate = Group('left', 'x~y'),
@@ -140,7 +140,7 @@ else:
     op_order.priority('prefixes', 'juxt', 'white', 'suffixes',
                       'pow', 'mul', 'add',
                       'ineq', 'neg', 'conj', 'xor', 'alt', 'cond',
-                      'agglutinate',
+                      # 'agglutinate',
                       'assign',
                       'comma', 'semicolon')
     op_order.priority('suffixes', 'inc', 'mul')
@@ -151,6 +151,7 @@ else:
     op_order.priority('union', 'seteq')
     op_order.priority('suffixes', 'type', 'assign')
     op_order.priority('suffixes', 'custom', 'assign')
+    op_order.priority('agglutinate', 'assign')
 
     # NOTE: from this point on, keep 'infer = False'. Setting the colon
     # (:) operator as right-associative with all other operators leads to
@@ -169,10 +170,12 @@ else:
         # with higher priority than whitespace)
         # - agglutinate (!) has strictly lower priority (and also
         # operators with lower priority than agglutinate)
-        if group not in ['prefixes', 'juxt', 'white']:
+        if group not in ['prefixes', 'juxt', 'white', 'colon']:
             op_order.right_order(group, 'colon', infer = False)
-        if group not in ['comma', 'semicolon', 'agglutinate']:
+            # op_order.left_order(group, 'agglutinate', infer = False)
+        if group not in ['comma', 'semicolon', 'agglutinate', 'colon']:
             op_order.right_order('colon', group, infer = False)
+            # op_order.left_order('agglutinate', group, infer = False)
     op_order.left_order('prefixes', 'colon', infer = False)
     op_order.left_order('juxt', 'colon', infer = False)
     op_order.left_order('white', 'colon', infer = False)
