@@ -122,7 +122,8 @@ class Parser:
                                 + self.vi_unit)).setParseAction(self.handler_vi_expr)
         self.vi_unquote = FW()
         self.vi_unquote << (_up
-                            + (self.vi_group
+                            + (self.bracketed
+                               | self.vi_group
                                | self.vi_unquote)).setParseAction(self.handler_unquote)
 
         ### Strings ###
