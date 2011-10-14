@@ -71,13 +71,6 @@ term_color_highlighters = (
     ([mac("pure"), 0, infix("__"), 1, infix("_"), 0, ast.Identifier],
      True, "green*"),
 
-    ###############
-    # Parentheses #
-    ###############
-
-    ([ast._Seq],
-     False, "white*"),
-
     ###########
     # Strings #
     ###########
@@ -86,6 +79,13 @@ term_color_highlighters = (
      True, "magenta*"),
     ([ast.StringVI],
      False, "red*"),
+
+    ###############
+    # Parentheses #
+    ###############
+
+    ([ast._Seq],
+     False, "white*"),
 
     #############
     # Operators #
@@ -134,13 +134,6 @@ html_highlighters = (
     ([mac("def"), 0, infix("__"), 1, infix("_"), 0, ast.Identifier],
      True, "definition"),
 
-    ###############
-    # Parentheses #
-    ###############
-
-    ([ast._Seq],
-     False, "sequence"),
-
     ###########
     # Strings #
     ###########
@@ -149,6 +142,13 @@ html_highlighters = (
      True, "string_vi"),
     ([ast.StringVI],
      False, "string"),
+
+    ###############
+    # Parentheses #
+    ###############
+
+    ([ast._Seq],
+     False, "sequence"),
 
     #############
     # Operators #
