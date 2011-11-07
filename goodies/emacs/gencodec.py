@@ -18,7 +18,7 @@ if __name__ == '__main__':
     identifiers_s = ""
     for possibilities, char in codec.identifiers:
         for p in possibilities:
-            p = p.replace('"', '\\"')
+            p = p.replace('\\', '\\\\').replace('"', '\\"')
             char_hex = hex(ord(char))[2:].zfill(4)
             identifiers_s += '    ("%s"%s . #x%s) ;; %s\n' % \
                 (p, " " * (20 - len(p)), char_hex, char)
