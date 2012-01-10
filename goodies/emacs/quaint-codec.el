@@ -46,7 +46,7 @@
 ;;;;;;;;;;;;;;;;;;;;;
 
 (defvar quaint-codec-named-code-regexp
-  "`[a-zA-Z0-9\"'^<>=~|/-\\\\]*`"
+  "`[a-zA-Z0-9\"'^<>=~|/\\-\\\\]*`"
   "Regular expression matching characters encoded like
 `.*`. Not all characters are valid. Valid characters are
 letters a-z and A-Z, numbers 0-9, \" (umlaut), ' (acute),
