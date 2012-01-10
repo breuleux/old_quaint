@@ -208,7 +208,8 @@ class Parser:
         digits = digits[0] if digits else "0"
         decimal = decimal[1] if decimal else ""
         exponent = exponent[1] if exponent else 0
-        return ast.Numeral(loc, 10, digits + decimal, len(digits) + exponent)
+        return ast.Numeral(loc, 10, digits + decimal,
+                           len(digits.replace("_", "")) + exponent)
 
     @auto_location
     def handler_num_radix(self, loc, tokens):
@@ -217,7 +218,8 @@ class Parser:
         digits = digits[0] if digits else ""
         decimal = decimal[1] if decimal else ""
         exponent = 0
-        return ast.Numeral(loc, radix, digits + decimal, len(digits))
+        return ast.Numeral(loc, radix, digits + decimal,
+                           len(digits.replace("_", "")))
 
     @auto_location
     def handler_bracketed(self, loc, tokens):
@@ -616,7 +618,7 @@ class Parser:
         if not partials:
             if not sub_expressions:
                 #return Void(merge_node_locations([]))
-                return Void(orig_sequence.location)
+                return ast.Void(orig_sequence.location)
             elif len(sub_expressions) == 1:
                 return sub_expressions[0][0]
             else:
@@ -714,13 +716,13 @@ class Parser:
         e = Convert2().visit(ast.Bracketed(e.location, "P", e))
         return e
 
-    # def parse3(self, code):
-    #     e = self.parse2(code)
-    #     e = Convert3().visit(e)
-    #     return e
+    def parse3(self, code):
+        e = self.parse2(code)
+        e = Convert3().visit(e)
+        return e
 
     def parse(self, code):
-        return self.parse2(code)
+        return self.parse3(code)
 
     # def parse(self, code):
     #     return self.expression.parseWithTabs().parseString(code)[0]
@@ -730,7 +732,7 @@ class Parser:
 class Convert2(ast.ASTVisitor):
 
     def do_collapse(self, op):
-        return op in (ast.Infix(","), ast.Infix("_"), ast.Infix("__"))
+        return op in (ast.Infix(","), ) # ast.Infix("_"), ast.Infix("__"))
 
     def visit_OpApply(self, node):
         # operator = self.visit(node.operator)
@@ -778,6 +780,136 @@ class Convert2(ast.ASTVisitor):
 
     def visit_ASTNode(self, node):
         raise Exception("This node type is not handled: %s" % type(node))
+
+
+
+
+
+class Convert3(ast.ASTVisitor):
+
+    def __init__(self):
+        self.nest = [0]
+        self.nest_idx = 0
+
+    def visit_OpApply(self, node):
+        self.nest_idx += 1
+        self.nest.append(self.nest_idx)
+        operator = node.operator
+        if operator.op in ("__", "_"):
+            fn = self.visit(node.children[0])
+            arg = self.visit(node.children[1])
+            loc = location.merge_locations([fn.meta.location, arg.meta.location])
+            rval = ast.Canon(ast.Meta(location = loc,
+                                      nest = None),
+                             'apply', fn, arg)
+        else:
+            app = ast.Canon(ast.Meta(location = operator.location,
+                                     nest = list(self.nest)),
+                            'symbol',
+                            operator.op)
+            rval = ast.Canon(ast.Meta(location = node.location,
+                                      nest = None),
+                             'apply',
+                             app,
+                             ast.Canon(ast.Meta(location = node.location,
+                                                nest = None),
+                                       'syntax',
+                                       self.visit(ast.Sequence(node.location,
+                                                               node.children))))
+        self.nest.pop()
+        return rval
+
+    def visit_NoneType(self, node):
+        return ast.Canon(ast.Meta(None, None), "void")
+
+    def visit_Sequence(self, node):
+        if len(node.items) == 0:
+            return self.visit(None)
+        self.nest_idx += 1
+        self.nest.append(self.nest_idx)
+        if len(node.items) == 1:
+            rval = self.visit(node.items[0])
+        else:
+            rval = ast.Canon(ast.Meta(location = node.location,
+                                      nest = list(self.nest)),
+                             'begin',
+                             *[self.visit(item)
+                               for item in node.items])
+
+        self.nest.pop()
+        return rval
+
+    def visit_Table(self, node):
+        self.nest_idx += 1
+        self.nest.append(self.nest_idx)
+        rval = ast.Canon(ast.Meta(location = node.location,
+                                  nest = list(self.nest)),
+                         'table',
+                         *[self.visit(item)
+                           for item in node.items])
+
+        self.nest.pop()
+        return rval
+
+    def visit_Code(self, node):
+        self.nest_idx += 1
+        self.nest.append(self.nest_idx)
+        rval = ast.Canon(ast.Meta(location = node.location,
+                                  nest = list(self.nest)),
+                         'syntax',
+                         self.visit(ast.Sequence(node.location,
+                                                 node.items)))
+        self.nest.pop()
+        return rval
+
+    def visit_Identifier(self, node):
+        return ast.Canon(ast.Meta(location = node.location,
+                                  nest = list(self.nest)),
+                         'symbol',
+                         node.id)
+
+    def visit_Numeral(self, node):
+        ndig = len(node.digits)
+        return ast.Canon(ast.Meta(location = node.location,
+                                  nest = None),
+                         'value',
+                         sum(v * node.radix**(ndig - i - 1)
+                             for i, v in enumerate(node.digits))
+                         / node.radix ** (ndig - node.exp))
+
+    def visit_StringVI(self, node):
+        items = []
+        for item in node.items:
+            if isinstance(item, str):
+                items.append(ast.Canon(ast.Meta(location = None,
+                                                nest = None),
+                                       'value', item))
+            else:
+                item = ast.Canon(ast.Meta(location = item.location,
+                                          nest = None),
+                                 'apply',
+                                 ast.Canon(ast.Meta(location = None,
+                                                    nest = None),
+                                           'symbol', '__string_convert'),
+                                 self.visit(item))
+                items.append(item)
+        if len(items) == 1:
+            return items[0]
+        else:
+            return ast.Canon(ast.Meta(location = node.location,
+                                      nest = None),
+                             'apply',
+                             ast.Canon(ast.Meta(location = None,
+                                                nest = None),
+                                       'symbol', '__string_append'),
+                             ast.Canon(ast.Meta(location = node.location,
+                                                nest = None),
+                                       'table',
+                                       *items))
+
+    def visit_ASTNode(self, node):
+        raise Exception("This node type is not handled: %s" % type(node))
+
 
 
 # class Convert3(ast.ASTModifier):

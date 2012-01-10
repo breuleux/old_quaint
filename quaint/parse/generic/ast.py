@@ -2,6 +2,7 @@
 import re
 import pyparsing as P
 from .location import merge_locations
+from .error import QuaintSyntaxError
 
 
 __all__ = ['ASTNode', 'Identifier', 'Numeral', 'Bracketed', 'StringVI',
@@ -52,7 +53,7 @@ class Identifier(ASTNode):
 
 _digit_table = P.nums + P.alphas[-26:]
 def to_digit_list(s):
-    return [_digit_table.index(c) for c in s.upper()]
+    return [_digit_table.index(c) for c in s.upper() if c != "_"]
 def to_digits(l):
     return "".join(_digit_table[i] for i in l)
 
@@ -67,6 +68,11 @@ class Numeral(ASTNode):
         if not digits: digits = [0]
         self.digits = digits
         self.exp = exp
+        if not (2 <= radix <= 36):
+            raise QuaintSyntaxError("bad_radix", radix, self)
+        for d in digits:
+            if d > radix - 1:
+                raise QuaintSyntaxError("bad_radix_mantissa", radix, self)
     def __str__(self):
         return "%sr.%s^%s" % (self.radix, to_digits(self.digits), self.exp)
 
@@ -245,6 +251,17 @@ class OpApply(ASTNode):
                            [other.operator, other.children]))
 
 
+class X(ASTNode):
+    def __init__(self, function, argument, location = None):
+        if location is None:
+            location = merge_locations([function.location, argument.location])
+        super().__init__(location)
+        self.function = function
+        self.argument = argument
+    def __str__(self):
+        return '(%s %s)' % (self.function, self.argument)
+
+
 class Void(ASTNode):
     def __str__(self):
         return 'void'
@@ -265,16 +282,71 @@ class _Seq(ASTNode):
 
 class Sequence(_Seq):
     def __str__(self):
-        return "(%s)" % ", ".join(map(str, self.items))
+        return "(BEGIN %s)" % " ".join(map(str, self.items))
 
 class Table(_Seq):
     def __str__(self):
-        return "[%s]" % ", ".join(map(str, self.items))
+        return "[%s]" % " ".join(map(str, self.items))
 
 class Code(_Seq):
     def __str__(self):
-        return "{%s}" % ", ".join(map(str, self.items))
+        return "{%s}" % " ".join(map(str, self.items))
 
+class Value(ASTNode):
+    def __init__(self, value, location = None):
+        self.value = value
+        super().__init__(location)
+    def __str__(self):
+        return repr(self.value)
+
+
+class Meta(ASTNode):
+    def __init__(self, location, nest):
+        self.location = location
+    def __str__(self):
+        return str(self.location)
+
+class Canon(ASTNode):
+    def __init__(self, meta, command, *arguments):
+        self.meta = meta
+        self.command = command
+        self.arguments = arguments
+        self.all = [meta, command] + list(arguments)
+
+    def __getitem__(self, index):
+        return self.all[index]
+
+    def str_sugary(self):
+        cmd = self.all[1]
+        onearg = len(self.all) == 3
+        if onearg: thearg = self.all[2]
+        if cmd == 'symbol' and onearg:
+            return thearg
+        elif cmd == 'value' and onearg:
+            return repr(thearg)
+        elif cmd == 'apply':
+            return '({fn} ! {arg})'.format(fn = self.all[2],
+                                         arg = self.all[3])
+        elif cmd == 'begin':
+            return "{{{args}}}".format(args = " ".join(map(repr, self.all[2:])))
+        elif cmd == 'syntax' and onearg:
+            return "..{args}".format(args = " ".join(map(repr, self.all[2:])))
+        elif cmd == 'table':
+            return "[{args}]".format(args = " ".join(map(repr, self.all[2:])))
+        else:
+            return self.str_plain()
+
+    def str_plain(self):
+        cmd = self.all[1]
+        if len(self.all) == 2:
+            return "({cmd})".format(cmd = cmd)
+
+        else:
+            return "({cmd} {args})".format(cmd = cmd,
+                                           args = " ".join(map(repr, self.all[2:])))
+
+    def __str__(self):
+        return self.str_plain()
 
 
 # #########################
@@ -324,6 +396,42 @@ class ASTModifier(ASTVisitor):
     def visit__Seq(self, node):
         node.items = map(self.visit, node.items)
         return node
+
+
+
+
+
+class CanonVisitor:
+
+    def visit(self, node, *rest):
+        if isinstance(node, Canon):
+            try:
+                kind = node.all[1]
+                fn = getattr(self, "visit_" + kind)
+                return fn(node, *rest)
+            except AttributeError as e:
+                pass
+        return node
+
+
+class CanonModifier(CanonVisitor):
+
+    def visit_apply(self, node):
+        node.all[2:] = list(map(self.visit, node.all[2:]))
+        return node
+
+    def visit_begin(self, node):
+        node.all[2:] = list(map(self.visit, node.all[2:]))
+        return node
+
+    def visit_syntax(self, node):
+        node.all[2:] = list(map(self.visit, node.all[2:]))
+        return node
+
+    def visit_table(self, node):
+        node.all[2:] = list(map(self.visit, node.all[2:]))
+        return node
+
 
 
 

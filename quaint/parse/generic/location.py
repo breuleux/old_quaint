@@ -112,7 +112,7 @@ def merge_locations(locations):
     assert all(loc1.source is l.source for l in locations[1:])
     return Location(source = loc1.source,
                     span = (loc1.span[0], loc2.span[1]),
-                    tokens = reduce(list.__add__, (list(l.tokens) for l in locations)))
+                    tokens = reduce(list.__add__, (list(l.tokens) for l in locations if l.tokens is not None), []))
 
 def merge_node_locations(nodes):
     return merge_locations([n.location for n in nodes])

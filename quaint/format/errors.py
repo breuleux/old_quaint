@@ -46,7 +46,9 @@ class RichQuaintSyntaxError(Exception):
         self.attributes_map = attributes_map
         self.culprits = culprits
         self.other_nodes = other_nodes
-        self.location = merge_locations(c.location for culprit_group in culprits for c in culprit_group)
+        self.location = merge_locations(c.location if hasattr(c, 'location') else c
+                                        for culprit_group in culprits
+                                        for c in culprit_group)
 
     def highlight(self, format, context = 0):
         attributes = self.attributes_map.get(type(format), None)
@@ -59,10 +61,14 @@ class RichQuaintSyntaxError(Exception):
         specifications = []
         for i, nodes in enumerate(self.culprits):
             for node in nodes:
-                specifications.append((node.location, attributes[i]))
+                if hasattr(node, 'location'):
+                    node = node.location
+                specifications.append((node, attributes[i]))
         for i, nodes in enumerate(self.other_nodes):
             for node in nodes:
-                specifications.append((node.location, attributes[i]))
+                if hasattr(node, 'location'):
+                    node = node.location
+                specifications.append((node, attributes[i]))
         s = "Syntax error in %s at %s\n%s\n%s" % (
             "BAH",
             self.location.ref(),
@@ -232,6 +238,61 @@ def bad_character_error(char, token):
         {TermColorFormat: ['red*'],
          TermPlainFormat: ['^']},
         [[token]])
+
+def bad_radix_mantissa_error(radix, token):
+    legal = "0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ"[:radix] + "._"
+    loc = token.location
+    src = loc.source
+    pfx, mantissa = src[loc.start : loc.end].split('r')
+    baseline = loc.start + len(pfx) + 1
+    badchars = set()
+    badlocs = []
+    for i, c in enumerate(mantissa):
+        if c.upper() not in legal:
+            badchars.add(c)
+            badlocs.append(Location(src, (baseline + i, baseline + i + 1), None))
+    badchars = list(sorted(badchars))
+    junct = [", "] * (len(badchars) - 2) + [" and "] * (len(badchars) > 1) + [""]
+    plural = len(badchars) != 1
+    return RichQuaintSyntaxError(
+        ["The digit", "s"*plural, " "] + sum([[(0, c), j]
+                               for c, j in zip(badchars, junct)], [])
+        + [(" are" if plural else " is"), " not valid in base ",
+           (1, radix), ". Acceptable digits are: ",
+           (2, legal[:-2]), "."
+           + (" Note that the scientific notation (e.g. 2e10) cannot be used with "
+              "non-decimal literal notation (at a glance I think that might be what "
+              "you attempted to do)."
+              if 'e' in badchars or 'E' in badchars else "")],
+        {TermColorFormat: ['red*', 'green*', 'white*'],
+         TermPlainFormat: ['^', '$', '%']},
+        [badlocs, [Location(src, (loc.start, loc.start + len(pfx) + 1), None)], [token]])
+
+def bad_radix_error(radix, token):
+    loc = token.location
+    src = loc.source
+    pfx = src[loc.start : loc.end].split('r')[0]
+
+    if token.exp >= len(token.digits):
+        alt = "R({radix})[{d}]".format(
+            radix = radix,
+            d = ", ".join(map(str, token.digits
+                              + [0] * (token.exp - len(token.digits)))))
+    else:
+        alt = "R({radix})[{d1}, (.), {d2}]".format(
+            radix = radix,
+            d1 = ", ".join(map(str, token.digits[:token.exp])),
+            d2 = ", ".join(map(str, token.digits[token.exp:])))
+
+    return RichQuaintSyntaxError(
+        ["Base ", (0, radix), " is not a legal base for literals. ",
+         "Bases must range from ", (1, 2), " to ", (1, 36), " inclusively. ",
+         "You may try the R function instead: ",
+         (1, alt),
+         "."],
+        {TermColorFormat: ['red*', 'white*'],
+         TermPlainFormat: ['^', '$']},
+        [[Location(src, (loc.start, loc.start + len(pfx) + 1), None)]])
 
 
 
