@@ -1,6 +1,6 @@
 
-from quaint.tools import Exc, namedlist, attrdict
-from quaint.tools.svg import Line, Circle, Path, Text
+from ..tools import namedlist, attrdict
+from ..tools.svg import Line, Circle, Path, Text
 
 
 class LineDesc:

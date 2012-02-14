@@ -1,10 +1,24 @@
 
 import inspect
-from quaint.tools import attrdict, Exc, KW, dmergei
+import exc
+from .tools import KW, dmergei
 
 
-def MPVMException(kind):
-    return Exc("mpvm/" + kind)
+class MPVMException(exc.Exception):
+    def __init__(self, description = "", **arguments):
+        try:
+            self.description = description.format(**arguments)
+        except KeyError as e:
+            self.description = (
+                description +
+                " (while trying to fill in the details,"
+                " the following error was raised: KeyError(" + str(e) + ")"
+                )
+        self.arguments = arguments
+    def __str__(self):
+        return self.description
+    def __repr__(self):
+        return str(self)
 
 
 # indicates an empty port.
@@ -49,7 +63,7 @@ class GateSpec:
         """
         if isinstance(port_name, int):
             if port_name < 0 or port_name >= self.nports:
-                raise MPVMException('index.invalid_port_number')(
+                raise MPVMException['index.invalid_port_number'](
                     "Port #{port_num} of gate {gate} does not exist.",
                     port_num = port_name,
                     gate = self
@@ -58,7 +72,7 @@ class GateSpec:
         try:
             return self.ports[port_name]
         except KeyError:
-            raise MPVMException('key.invalid_port_name')(
+            raise MPVMException['key.invalid_port_name'](
                 "Port '{port_name}' of gate {gate} does not exist.",
                 port_name = port_name,
                 gate = self
@@ -74,7 +88,7 @@ class GateSpec:
         """
         if isinstance(port_num, str):
             if port_num not in self.ports:
-                raise MPVMException('key.invalid_port_name')(
+                raise MPVMException['key.invalid_port_name'](
                     "Port '{port_name}' of gate {gate} does not exist.",
                     port_name = port_num,
                     gate = self
@@ -83,7 +97,7 @@ class GateSpec:
         try:
             return self.ports[port_num]
         except IndexError:
-            raise MPVMException('index.invalid_port_number')(
+            raise MPVMException['index.invalid_port_number'](
                 "Port #{port_num} of gate {gate} does not exist.",
                 port_num = port_num,
                 gate = self
@@ -250,7 +264,7 @@ class CommonGateSpec(ProcGateSpec):
         self.deps_map = {}
         for entry, ins in deps_map.items():
             if not isinstance(entry, tuple):
-                raise Exc("mpvm/wrong_deps_map")(
+                raise MPVMException["wrong_deps_map"](
                     "All entries in deps_map should be tuples."
                     )
             if len(entry) <= 1:
@@ -280,7 +294,7 @@ class CommonGateSpec(ProcGateSpec):
                     args = argspec.args[1:]
                 for arg in args:
                     if arg not in self.port_names:
-                        raise Exc('mpvm/circuit_bad_function_arguments')(
+                        raise MPVMException['circuit_bad_function_arguments'](
                             "Argument '{arg}' of function {f} is not a valid port name"
                             " for circuit {this}",
                             arg = arg,
@@ -373,7 +387,7 @@ class CommonGateSpec(ProcGateSpec):
                 except KeyError:
                     continue
 
-            raise MPVMException("network/commongate/no_deps_for_nil")(
+            raise MPVMException["network/commongate/no_deps_for_nil"](
                 "Please give dependencies for the entry"
                 " (None, None) or ({fs}, None) in the"
                 " description of the gate {this}",
@@ -394,7 +408,7 @@ class CommonGateSpec(ProcGateSpec):
                 except KeyError:
                     continue
 
-            raise MPVMException("network/bad_out_req")(
+            raise MPVMException["network/bad_out_req"](
                 "GateSpec {this} does not support tag {tag}"
                 " on port '{port}' with flow state {fs}",
                 this = instance,
@@ -515,7 +529,7 @@ class FunctionGateSpec(CommonGateSpec):
         if input_ports is None:
             spec = inspect.getargspec(fn)
             if spec.varargs or spec.keywords:
-                raise MPVMException('functiongate/illegal_function_signature')(
+                raise MPVMException['functiongate/illegal_function_signature'](
                     "The function given as an argument to FunctionGateSpec"
                     " may not have varargs or keyword arguments, unless"
                     " the names of the input ports are given explicitly"
@@ -524,7 +538,7 @@ class FunctionGateSpec(CommonGateSpec):
             input_ports = list(spec.args)
         self.input_ports = input_ports
         if {'out', 'error'} & set(self.input_ports):
-            raise MPVMException('functiongate/illegal_port_names')(
+            raise MPVMException['functiongate/illegal_port_names'](
                 "The function given as an argument to FunctionGateSpec"
                 " may not have inputs named 'out' and/or 'error'."
                 )
@@ -642,7 +656,7 @@ class Gate:
         port = self.port_num(port)
         ex = self.connections[port]
         if ex:
-            raise MPVMException('circuit/multiple_connections')(
+            raise MPVMException['circuit/multiple_connections'](
                 "Port '{iname}' of {this} is already connected"
                 " to port '{jname}' of {that}. Cannot connect"
                 " to port '{kname}' of {other}.",
@@ -834,7 +848,7 @@ class Circuit(Gate):
 
             if "." not in port1:
                 if "." not in port2:
-                    raise MPVMException('circuit/short_circuit')(
+                    raise MPVMException['circuit/short_circuit'](
                         "You cannot connect two of the circuit's ports"
                         " together directly. The ports in fault are"
                         " '{a}' and '{b}'",
@@ -863,7 +877,7 @@ class Circuit(Gate):
                 prev = self.outlets[pnum]
 
                 if prev is not VOID:
-                    raise MPVMException('circuit/multiple_connections')(
+                    raise MPVMException['circuit/multiple_connections'](
                         "No more than one port of the subcircuit for {this}"
                         " can correspond to an external port of the circuit."
                         " Both {one} and {two} are defined as corresponding"
@@ -875,7 +889,7 @@ class Circuit(Gate):
                         )
 
                 elif entry in all_connected:
-                    raise MPVMException('circuit/multiple_connections')(
+                    raise MPVMException['circuit/multiple_connections'](
                         "No more than one port of {this} can correspond to" 
                         " a port of any gate in the circuit. Here,"
                         " both {one} and {two} are defined as corresponding"
@@ -895,7 +909,7 @@ class Circuit(Gate):
         if not spec.allow_dangling:
             for i, outlet in enumerate(self.outlets):
                 if outlet is VOID:
-                    raise MPVMException('circuit/missing_connection')(
+                    raise MPVMException['circuit/missing_connection'](
                         "Port {port} of circuit {circ} is not connected"
                         " to anything. There should be an entry of the"
                         " form ('{port}', 'gate.port') in the list of"

@@ -1,7 +1,6 @@
 
 from .core import GateSpec, CircuitSpec, MPVMException, VOID, REQ, NOTAG, AVAIL
 from . import core, lib
-from quaint.tools import attrdict, Exc
 
 
 def make_agent(name, gate, input_ports, output_port, error_port):
@@ -44,7 +43,7 @@ def make_agent(name, gate, input_ports, output_port, error_port):
         edges.append(('explode.o{0}'.format(i),
                       'gate.{0}'.format(input_port)))
 
-    exc = MPVMException("standard/unknown_command")(
+    exc = MPVMException["standard/unknown_command"](
         "Unknown command."
         )
 
@@ -70,7 +69,7 @@ class AbstractAgent(core.Gate):
 
     def __init__(self, spec, state, qual = None, id = None):
         if state is not None:
-            raise Exc('mpvm/abstract_agent/bad_state')(
+            raise MPVMException['abstract_agent/bad_state'](
                 "Please give None as the state argument of AbstractAgentX"
                 )
         super().__init__(spec,
@@ -141,7 +140,7 @@ def Environment(contents):
             if select in state:
                 return ((0, state), {'out': state[select]}, {'select', 'in_command'})
             else:
-                err = MPVMException('environment/not_found')(
+                err = MPVMException['environment/not_found'](
                     "The key {key} was not found in the environment.",
                     key = repr(select)
                     )
@@ -152,7 +151,7 @@ def Environment(contents):
             state[select] = in_command[1]
             return ((0, state), {'out': in_command[1]}, {'select', 'in_command'})
         else:
-            err = MPVMException('environment/unknown_command')(
+            err = MPVMException['environment/unknown_command'](
                 "The command {command} is not recognized by the environment.",
                 command = in_command
                 )

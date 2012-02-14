@@ -1,6 +1,6 @@
 
 from .core import CommonGateSpec, FunctionGateSpec, VOID, REQ, AVAIL, MPVMException
-from quaint.tools import dmergei
+from .tools import dmergei
 
 
 ##################
@@ -98,7 +98,7 @@ def if_do(state, cond = VOID, iftrue = VOID, iffalse = VOID):
         ret = iffalse  # output iffalse
         consumed = {2} # consume iffalse (port #2)
     else:
-        raise MPVMException('if/badstate')(
+        raise MPVMException['if/badstate'](
             "IfThenElse should not have internal"
             " state other than 0, 1 or 2...",
             )
@@ -161,7 +161,7 @@ def EitherOnce(n):
                 return ((1, None),
                         {iname.replace('i', 'o'): args[iname]},
                         range(n))
-        raise MPVMException('commongate/no_input')(
+        raise MPVMException['commongate/no_input'](
             "The Either gate instance {this} is not supposed to get"
             " called if there is no available input!",
             this = rval
@@ -325,7 +325,7 @@ class Bottleneck(CommonGateSpec):
                 return ((1, None),
                         {'out': args[iname]},
                         {i})
-        raise MPVMException('commongate/no_input')(
+        raise MPVMException['commongate/no_input'](
             "The Bottleneck gate instance {this} is not supposed to get"
             " called if there is no available input!",
             this = rval
@@ -472,7 +472,7 @@ def Explode(n):
 
     def do(state, input):
         if len(input) != n:
-            err = MPVMException('explode/wrong_input_length')(
+            err = MPVMException['explode/wrong_input_length'](
                 "Input {input} has the wrong length. Expected a list"
                 " of length {n}, not {n2}.",
                 input = input,

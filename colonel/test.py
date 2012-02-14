@@ -1,8 +1,8 @@
 
 # from .core import xgate, VOID, CircuitSpec, MPVMException
 # from . import core, lib, standard
-from quaint.vm.core import xgate, xgate_iter, VOID, CircuitSpec, MPVMException
-from quaint.vm import core, lib, standard
+from colonel.core import xgate, xgate_iter, VOID, CircuitSpec, MPVMException
+from colonel import core, lib, standard
 import random
 import os
 
@@ -104,7 +104,7 @@ def test_bad_circuit():
         F.make_instance()
         raise Exception("Failure")
 
-    except MPVMException('circuit/multiple_connections'):
+    except MPVMException['circuit/multiple_connections']:
         pass
 
     # Two
@@ -118,7 +118,7 @@ def test_bad_circuit():
         F.make_instance()
         raise Exception("Failure")
 
-    except MPVMException('circuit/multiple_connections'):
+    except MPVMException['circuit/multiple_connections']:
         pass
 
     # Three
@@ -132,7 +132,7 @@ def test_bad_circuit():
         F.make_instance()
         raise Exception("Failure")
 
-    except MPVMException('circuit/multiple_connections'):
+    except MPVMException['circuit/multiple_connections']:
         pass
 
     # Four
@@ -148,7 +148,7 @@ def test_bad_circuit():
         F.make_instance()
         raise Exception("Failure")
 
-    except MPVMException('circuit/multiple_connections'):
+    except MPVMException['circuit/multiple_connections']:
         pass
 
     # Five
@@ -162,7 +162,7 @@ def test_bad_circuit():
         F.make_instance()
         raise Exception("Failure")
 
-    except MPVMException('circuit/missing_connection'):
+    except MPVMException['circuit/missing_connection']:
         pass
 
 
@@ -202,7 +202,7 @@ def test_circuit1():
         try:
             results = xgate(F, dict(a = 1, b = 2, out = 3),
                             ['c'])
-        except MPVMException("network/bad_out_req"):
+        except MPVMException["network/bad_out_req"]:
             return
 
 
@@ -319,7 +319,7 @@ def test_make_agent():
                     ['out', 'error'])
     print(results)
     assert results['out'] == VOID
-    assert isinstance(results['error'], MPVMException('explode/wrong_input_length'))
+    assert isinstance(results['error'], MPVMException['explode/wrong_input_length'])
 
     # Invalid command for an agent made with make_agent
     results = xgate(agent,
@@ -327,7 +327,7 @@ def test_make_agent():
                     ['out', 'error'])
     print(results)
     assert results['out'] == VOID
-    assert isinstance(results['error'], MPVMException('standard/unknown_command'))
+    assert isinstance(results['error'], MPVMException['standard/unknown_command'])
 
 
 def test_standard_circuit():
@@ -385,14 +385,14 @@ def test_abstract_agent():
                     dict(gate = agent, select = [10, 20, 30], in_command = "get"),
                     ['out', 'error'])
     assert results['out'] == VOID
-    assert isinstance(results['error'], MPVMException('explode/wrong_input_length'))
+    assert isinstance(results['error'], MPVMException['explode/wrong_input_length'])
 
     # Wrong command
     results = xgate(standard.abstract_agent,
                     dict(gate = agent, select = [10, 20], in_command = ["set", 13]),
                     ['out', 'error'])
     assert results['out'] == VOID
-    assert isinstance(results['error'], MPVMException('standard/unknown_command'))
+    assert isinstance(results['error'], MPVMException['standard/unknown_command'])
 
 
 def test_environment():
@@ -411,7 +411,7 @@ def test_environment():
                     dict(select = "not_there", in_command = "get"),
                     ['out', 'error'])
     assert results['out'] == VOID
-    assert isinstance(results['error'], MPVMException('environment/not_found'))
+    assert isinstance(results['error'], MPVMException['environment/not_found'])
 
     # Setting a key
     results = xgate(env,
@@ -425,7 +425,7 @@ def test_environment():
                     dict(select = "hello", in_command = 'bogus'),
                     ['out', 'error'])
     assert results['out'] == VOID
-    assert isinstance(results['error'], MPVMException('environment/unknown_command'))
+    assert isinstance(results['error'], MPVMException['environment/unknown_command'])
 
 
 def test_xgate_iter():

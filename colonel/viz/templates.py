@@ -2,9 +2,8 @@
 from .draw import (draw_polygon, draw_ports_polygon,
                    label_ports, calc_margins, text_dimensions)
 
-from quaint.tools import namedlist
-
-from quaint.tools.svg import Group, Text
+from ..tools import namedlist
+from ..tools.svg import Group, Text
 
 
 def name_label(x):

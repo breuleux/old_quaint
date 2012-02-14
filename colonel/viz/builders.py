@@ -1,5 +1,5 @@
 
-from quaint.tools.svg import Group, Text, Rectangle
+from colonel.tools.svg import Group, Text, Rectangle
 
 from .. import core, lib
 from .templates import standard_rect_gate, standard_trapezoid_gate, standard_circuit_gate

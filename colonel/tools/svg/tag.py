@@ -1,5 +1,5 @@
 
-from .. import Exc, dmerge, LL, LAD, LADLL
+from .. import dmerge, LL, LAD, LADLL
 from . import prop
 
 
@@ -57,7 +57,6 @@ class Tag(LADLL):
         for child in self[:]:
             if hasattr(child, 'log_with'):
                 child.log_with(logger)
-        # raise Exc('svg/not_implemented')('Cannot log tags yet!')
 
     def generate(self, indent = 0):
 

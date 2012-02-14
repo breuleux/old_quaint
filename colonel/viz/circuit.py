@@ -1,10 +1,10 @@
 
 import networkx as nx
 
-from ...tools import attrdict
+from ..tools import attrdict
 from ..core import VOID
 from .draw import LineDesc
-from ...tools.svg import Group, Line
+from ..tools.svg import Group, Line
 
 
 def place_gates(gates):
