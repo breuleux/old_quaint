@@ -1,6 +1,6 @@
 
 import re
-import pyparsing as P
+from . import pyparsing as P
 from .location import merge_locations
 from .error import QuaintSyntaxError
 

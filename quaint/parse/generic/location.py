@@ -1,6 +1,6 @@
 
 from functools import reduce
-import pyparsing as P
+from . import pyparsing as P
 
 
 __all__ = ['Location', 'merge_locations', 'merge_node_locations',

@@ -7,34 +7,66 @@ from quaint.tools import dmergei
 ### Distribute ###
 ##################
 
-def Distribute(n):
+class Distribute(CommonGateSpec):
     """
     Returns a gate with one input port and n output ports. The data
     provided as input is retransmitted from all output ports (in other
     words, this gate allows data to go from one port to many others).
     """
-    result_names = ['o{i}'.format(i = i)
-                    for i in range(n)]
 
-    def do(state, input):
+    def __init__(self, n):
+        self.result_names = ['o{i}'.format(i = i)
+                        for i in range(n)]
+
+        deps_map = dmergei({(): {}},
+                           {(name, REQ): {'input': REQ}
+                            for name in self.result_names})
+
+        super().__init__(
+            name = '{n}X'.format(n = n),
+            ports = ['input'] + self.result_names,
+            starter = lambda: (0, None),
+            deps_map = deps_map,
+            triggers = [({'input': AVAIL, name: REQ}, self.do)
+                        for name in self.result_names],
+            description = """
+            Outputs 'input' in 'rX', X ranging from 0 to {n}.
+            """.format(n = n-1))
+
+    def do(self, state, input):
         return ((0, None),
-                {name: input for name in result_names},
+                {name: input for name in self.result_names},
                 {0})
 
-    deps_map = dmergei({(): {}},
-                       {(name, REQ): {'input': REQ}
-                        for name in result_names})
 
-    return CommonGateSpec(
-        name = '{n}X'.format(n = n),
-        ports = ['input', 'error'] + result_names,
-        starter = lambda: (0, None),
-        deps_map = deps_map,
-        triggers = [({'input': AVAIL, name: REQ}, do)
-                    for name in result_names],
-        description = """
-        Outputs 'input' in 'rX', X ranging from 0 to {n}.
-        """.format(n = n-1))
+# def Distribute(n):
+#     """
+#     Returns a gate with one input port and n output ports. The data
+#     provided as input is retransmitted from all output ports (in other
+#     words, this gate allows data to go from one port to many others).
+#     """
+#     result_names = ['o{i}'.format(i = i)
+#                     for i in range(n)]
+
+#     def do(state, input):
+#         return ((0, None),
+#                 {name: input for name in result_names},
+#                 {0})
+
+#     deps_map = dmergei({(): {}},
+#                        {(name, REQ): {'input': REQ}
+#                         for name in result_names})
+
+#     return CommonGateSpec(
+#         name = '{n}X'.format(n = n),
+#         ports = ['input', 'error'] + result_names,
+#         starter = lambda: (0, None),
+#         deps_map = deps_map,
+#         triggers = [({'input': AVAIL, name: REQ}, do)
+#                     for name in result_names],
+#         description = """
+#         Outputs 'input' in 'rX', X ranging from 0 to {n}.
+#         """.format(n = n-1))
 
 
 
@@ -260,7 +292,7 @@ def EitherOnce(n):
 ### Bottleneck ###
 ##################
 
-def Bottleneck(n):
+class Bottleneck(CommonGateSpec):
     """
     Bottleneck(n) has n inputs and one output ('out'). All inputs are
     requested if out is requested. If any input arrives, it will be
@@ -271,10 +303,23 @@ def Bottleneck(n):
     on the order in which inputs arrive).
     """
 
-    inames = ['i{i}'.format(i = i) for i in range(n)]
+    def __init__(self, n):
+        self.n = n
 
-    def do(state, **args):
-        for i in range(n):
+        self.inames = ['i{i}'.format(i = i) for i in range(n)]
+
+        super().__init__(
+            name = 'Bo{n}'.format(n = n),
+            ports = self.inames + ['out'],
+            starter = lambda: (0, None), # state is not used
+            deps_map = {(): {},
+                        ('out', REQ): {i: REQ for i in range(n)}},
+            triggers = [({'out': REQ, name: AVAIL}, self.do)
+                        for name in self.inames],
+            description = Bottleneck.__doc__)
+
+    def do(self, state, **args):
+        for i in range(self.n):
             iname = 'i{i}'.format(i = i)
             if args[iname] is not VOID:
                 return ((1, None),
@@ -286,17 +331,45 @@ def Bottleneck(n):
             this = rval
             )
 
-    rval = CommonGateSpec(
-        name = 'Bo{n}'.format(n = n),
-        ports = inames + ['out'],
-        starter = lambda: (0, None), # state is not used
-        deps_map = {(): {},
-                    ('out', REQ): {i: REQ for i in range(n)}},
-        triggers = [({'out': REQ, name: AVAIL}, do)
-                    for name in inames],
-        description = Bottleneck.__doc__)
 
-    return rval
+
+# def Bottleneck(n):
+#     """
+#     Bottleneck(n) has n inputs and one output ('out'). All inputs are
+#     requested if out is requested. If any input arrives, it will be
+#     sent to the output port, and so on.
+
+#     The Bottleneck gate can be used to output sequentially inputs that
+#     arrive in parallel (IMPORTANT: the order of the sequence depends
+#     on the order in which inputs arrive).
+#     """
+
+#     inames = ['i{i}'.format(i = i) for i in range(n)]
+
+#     def do(state, **args):
+#         for i in range(n):
+#             iname = 'i{i}'.format(i = i)
+#             if args[iname] is not VOID:
+#                 return ((1, None),
+#                         {'out': args[iname]},
+#                         {i})
+#         raise MPVMException('commongate/no_input')(
+#             "The Bottleneck gate instance {this} is not supposed to get"
+#             " called if there is no available input!",
+#             this = rval
+#             )
+
+#     rval = CommonGateSpec(
+#         name = 'Bo{n}'.format(n = n),
+#         ports = inames + ['out'],
+#         starter = lambda: (0, None), # state is not used
+#         deps_map = {(): {},
+#                     ('out', REQ): {i: REQ for i in range(n)}},
+#         triggers = [({'out': REQ, name: AVAIL}, do)
+#                     for name in inames],
+#         description = Bottleneck.__doc__)
+
+#     return rval
 
 
 

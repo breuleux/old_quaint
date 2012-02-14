@@ -274,7 +274,10 @@ class CommonGateSpec(ProcGateSpec):
             if argspec.keywords:
                 args = list(self.port_names)
             else:
-                args = argspec.args[1:]
+                if argspec.args[0] == 'self':
+                    args = argspec.args[2:]
+                else:
+                    args = argspec.args[1:]
                 for arg in args:
                     if arg not in self.port_names:
                         raise Exc('mpvm/circuit_bad_function_arguments')(
@@ -340,7 +343,7 @@ class CommonGateSpec(ProcGateSpec):
 
         for i, v in enumerate(instance.tags_incoming):
             if v == AVAIL and rval[i] == REQ:
-                rval[i] == NOTAG
+                rval[i] = NOTAG
 
         # assert ([t == AVAIL for t in instance.tags_incoming]
         #         == [t is not VOID for t in instance.incoming])
@@ -615,10 +618,6 @@ class CircuitSpec(GateSpec):
 
 class Gate:
 
-    available = property(lambda self: {i
-                                       for i, v in enumerate(self.incoming)
-                                       if v is not VOID})
-
     def __init__(self, spec, state,
                  qual = None, id = None):
         # Port names, behavior, etc.
@@ -636,6 +635,8 @@ class Gate:
         # For display
         self.qual = qual
         self.id = id
+        # Monitoring
+        self.listeners = []
 
     def _connect(self, port, other):
         port = self.port_num(port)
@@ -668,13 +669,24 @@ class Gate:
     def set_incoming(self, port, value):
         pnum = self.port_num(port)
         self.incoming[pnum] = value
-        self.tags_incoming[pnum] = AVAIL if value is not VOID else NOTAG
+        # self.tags_incoming[pnum] = AVAIL if value is not VOID else NOTAG
+        self.set_tag(pnum, AVAIL if value is not VOID else NOTAG)
+        for listener in self.listeners:
+            listener.set_incoming(self, port, value)
+
+    def set_outgoing(self, port, value):
+        pnum = self.port_num(port)
+        self.outgoing[pnum] = value
+        for listener in self.listeners:
+            listener.set_outgoing(self, port, value)
 
     def set_tag(self, port, tag):
         pnum = self.port_num(port)
         if self.tags_incoming[pnum] == tag:
             return False
         self.tags_incoming[pnum] = tag
+        for listener in self.listeners:
+            listener.set_tag(self, port, tag)
         return True
 
     def get_incoming(self, port):
@@ -689,6 +701,9 @@ class Gate:
             if v1 != v2:
                 changes.add(i)
         self.tags_outgoing = list(tags_outgoing)
+        for listener in self.listeners:
+            for i, t in enumerate(self.tags_outgoing):
+                listener.set_outgoing_tag(self, i, t)
         return changes
 
     def propagate(self):
@@ -696,10 +711,14 @@ class Gate:
         return self._propagate(tags_outgoing)
 
     def trigger(self):
-        return self.spec.trigger(self)
+        triggered = self.spec.trigger(self)
+        for listener in self.listeners:
+            listener.trigger(self, triggered)
+        return triggered
 
     def produce(self):
-        return self.produce_all()[0]
+        rval = self.produce_all()[0]
+        return rval
 
     def produce_all(self):
         state, outgoing, consumed = self.spec.produce(self)
@@ -710,13 +729,15 @@ class Gate:
         rval = set()
         for output_name, value in outgoing.items():
             pnum = self.port_num(output_name)
-            self.outgoing[pnum] = value
+            # self.outgoing[pnum] = value
+            self.set_outgoing(pnum, value)
             if value is not VOID:
                 rval.add(pnum)
         for port in consumed:
             self.consume_port(port)
         for i in rval:
-            self.tags_incoming[i] = NOTAG
+            self.set_tag(i, NOTAG)
+            # self.tags_incoming[i] = NOTAG
         return rval, state, outgoing, consumed
 
     def consume_port(self, port):
@@ -725,7 +746,8 @@ class Gate:
         conn = self.connections[pnum]
         if conn is not None:
             inst, oport = conn
-            inst.outgoing[oport] = VOID
+            inst.set_outgoing(oport, VOID)
+            # inst.outgoing[oport] = VOID
 
     def send_tags(self):
         targets = set()
@@ -736,27 +758,9 @@ class Gate:
             gate, port = conn
             if gate.set_tag(port, tag):
                 targets.add(gate)
-        return targets
-
-    def send_reqs(self):
-        targets = set()
-        for rq in range(self.spec.nports):
-            if self.tags_outgoing[rq] == REQ:
-                if self.incoming[rq] is not VOID:
-                    continue
-                conn = self.connections[rq]
-                if conn is None:
-                    continue
-                gate, port = conn
-                if gate.set_tag(port, REQ):
-                    targets.add(gate)
-            else:
-                conn = self.connections[rq]
-                if conn is None:
-                    continue
-                gate, port = conn
-                if gate.set_tag(port, VOID):
-                    targets.add(gate)
+        # if targets:
+        for listener in self.listeners:
+            listener.send_tags(self)
         return targets
 
     def send(self):
@@ -768,6 +772,9 @@ class Gate:
             if value is not VOID:
                 targets.add(gate)
                 gate.set_incoming(port, value)
+        # if targets:
+        for listener in self.listeners:
+            listener.send(self)
         return targets
 
     def __str__(self):
@@ -781,6 +788,29 @@ class Gate:
     def __repr__(self):
         return self.__str__()
 
+
+class GateListener:
+
+    def set_incoming(self, gate, port, value):
+        pass
+
+    def set_outgoing(self, gate, port, value):
+        pass
+
+    def set_tag(self, gate, port, tag):
+        pass
+
+    def set_outgoing_tag(self, gate, port, tag):
+        pass
+
+    def trigger(self, gate, triggered):
+        pass
+
+    def send_tags(self, gate):
+        pass
+
+    def send(self, gate):
+        pass
 
 
 class Circuit(Gate):
@@ -912,12 +942,15 @@ class Circuit(Gate):
 
     def trigger(self):
         self.triggered = set()
-        print(self.triggerable, set(self.instances.values()))
+        #print(self.triggerable, set(self.instances.values()))
         # assert len(self.triggerable) == len(self.instances)
         for inst in self.triggerable:
             if inst.trigger():
                 self.triggered.add(inst)
-        return len(self.triggered) > 0
+        rval = len(self.triggered) > 0
+        for listener in self.listeners:
+            listener.trigger(self, rval)
+        return rval
 
     def produce_all(self):
 
@@ -980,6 +1013,29 @@ class Circuit(Gate):
         if success:
             self.prop_sources.add(inst)
         return success
+
+
+
+def xgate_step(instance, inputs, requests):
+    # instance = gate.make_instance()
+    for input_name, value in inputs.items():
+        instance.set_incoming(input_name, value)
+    for output_name in requests:
+        instance.set_tag(output_name, REQ)
+    results = {output_name: VOID for output_name in requests}
+    instance.propagate()
+    while instance.trigger():
+        yield
+        instance.produce()
+        results = {output_name: instance.get_outgoing(output_name)
+                   for output_name in requests}
+        if all(v is not VOID for v in results.values()):
+            yield results
+            return
+        instance.propagate()
+
+    yield results
+    return
 
 
     
