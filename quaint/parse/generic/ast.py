@@ -306,17 +306,74 @@ class Meta(ASTNode):
     def __str__(self):
         return str(self.location)
 
+def convert_sug(x):
+    if isinstance(x, Canon):
+        return x.str_sugary(convert_sug)
+    else:
+        return str(x)
+
+def convert_plain(x):
+    if isinstance(x, Canon):
+        return x.str_plain(convert_plain)
+    else:
+        return str(x)
+
+def htmlify(x):
+    return str(x).replace(" ", "&nbsp;").replace("<", "&lt;").replace(">", "&gt;")
+
+def convert_html(x):
+    if isinstance(x, Canon):
+        return x.str_html(convert_html)
+    else:
+        return "<span>" + htmlify(x) + "</span>"
+
 class Canon(ASTNode):
+
+    meta = property(lambda self: self.all[0])
+    command = property(lambda self: self.all[1])
+    arguments = property(lambda self: self.all[2:],
+                         lambda self, new: self.all.__setitem__(slice(2, None), new))
+
     def __init__(self, meta, command, *arguments):
-        self.meta = meta
-        self.command = command
-        self.arguments = arguments
+        # self.meta = meta
+        # self.command = command
+        # self.arguments = arguments
         self.all = [meta, command] + list(arguments)
 
     def __getitem__(self, index):
         return self.all[index]
 
-    def str_sugary(self):
+    def str_html(self, child_converter = convert_html):
+        cmd = self.all[1]
+        onearg = len(self.all) == 3
+        if onearg: thearg = self.all[2]
+        if cmd == 'symbol' and onearg:
+            return '<span class="symbol">{x}</span>'.format(x = htmlify(thearg))
+        elif cmd == 'value' and onearg:
+            return '<span class="value">{arg}</span>'.format(arg = repr(thearg))
+        elif cmd == 'apply':
+            return '<span class="apply">{fn}<span class="apply-sep"></span>{arg}</span>'.format(
+                fn = child_converter(self.all[2]),
+                arg = child_converter(self.all[3]))
+            # return '({fn} ! {arg})'.format(fn = child_converter(self.all[2]),
+            #                                arg = child_converter(self.all[3]))
+        elif cmd == 'begin':
+            return '<span class="begin"><span class="begin-inner"><span class="begin-cell">{args}</span></span></span>'.format(
+                args = '</span><span class="begin-cell">'.join(map(child_converter, self.arguments)))
+        elif cmd == 'syntax' and onearg:
+            return '<span class="syntax">{arg}</span>'.format(
+                arg = child_converter(self.arguments[0]))
+        elif cmd == 'table':
+            return '<span class="table"><span class="table-inner"><span class="table-cell">{args}</span></span></span>'.format(
+                args = '</span><span class="table-cell">'.join(map(child_converter, self.arguments)))
+            # return '<span class="table">{args}</span>'.format(
+            #     args = '<span class="table-sep"></span>'.join(map(child_converter, self.arguments)))
+        elif cmd == 'void':
+            return '<span class="void">∅</span>'
+        else:
+            return '<span>{x}</span>'.format(x = self.str_plain(child_converter))
+
+    def str_sugary(self, child_converter = convert_sug):
         cmd = self.all[1]
         onearg = len(self.all) == 3
         if onearg: thearg = self.all[2]
@@ -325,25 +382,26 @@ class Canon(ASTNode):
         elif cmd == 'value' and onearg:
             return repr(thearg)
         elif cmd == 'apply':
-            return '({fn} ! {arg})'.format(fn = self.all[2],
-                                         arg = self.all[3])
+            return '({fn} ! {arg})'.format(fn = child_converter(self.all[2]),
+                                           arg = child_converter(self.all[3]))
         elif cmd == 'begin':
-            return "{{{args}}}".format(args = " ".join(map(repr, self.all[2:])))
+            return "{{{args}}}".format(args = " ".join(map(child_converter, self.arguments)))
         elif cmd == 'syntax' and onearg:
-            return "..{args}".format(args = " ".join(map(repr, self.all[2:])))
+            return "..{args}".format(args = " ".join(map(child_converter, self.arguments)))
         elif cmd == 'table':
-            return "[{args}]".format(args = " ".join(map(repr, self.all[2:])))
+            return "[{args}]".format(args = " ".join(map(child_converter, self.arguments)))
         else:
-            return self.str_plain()
+            return self.str_plain(child_converter)
 
-    def str_plain(self):
+    def str_plain(self, child_converter = convert_plain):
         cmd = self.all[1]
         if len(self.all) == 2:
-            return "({cmd})".format(cmd = cmd)
+            return "({cmd})".format(cmd = child_converter(cmd))
 
         else:
             return "({cmd} {args})".format(cmd = cmd,
-                                           args = " ".join(map(repr, self.all[2:])))
+                                           args = " ".join(map(child_converter,
+                                                               self.arguments)))
 
     def __str__(self):
         return self.str_plain()
@@ -408,28 +466,29 @@ class CanonVisitor:
             try:
                 kind = node.all[1]
                 fn = getattr(self, "visit_" + kind)
-                return fn(node, *rest)
             except AttributeError as e:
-                pass
+                return node
+            rval = fn(node, *rest)
+            return rval
         return node
 
 
 class CanonModifier(CanonVisitor):
 
     def visit_apply(self, node):
-        node.all[2:] = list(map(self.visit, node.all[2:]))
+        node.arguments = list(map(self.visit, node.arguments))
         return node
 
     def visit_begin(self, node):
-        node.all[2:] = list(map(self.visit, node.all[2:]))
+        node.arguments = list(map(self.visit, node.arguments))
         return node
 
     def visit_syntax(self, node):
-        node.all[2:] = list(map(self.visit, node.all[2:]))
+        node.arguments = list(map(self.visit, node.arguments))
         return node
 
     def visit_table(self, node):
-        node.all[2:] = list(map(self.visit, node.all[2:]))
+        node.arguments = list(map(self.visit, node.arguments))
         return node
 
 

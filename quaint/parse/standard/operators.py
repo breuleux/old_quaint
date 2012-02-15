@@ -183,5 +183,10 @@ else:
     op_order.left_order('colon', 'semicolon', infer = False)
     op_order.left_order('colon', 'agglutinate', infer = False)
 
+    op_order.left_order('juxt', 'agglutinate', infer = False)
+    op_order.left_order('white', 'agglutinate', infer = False)
+    op_order.right_order('agglutinate', 'juxt', infer = False)
+    op_order.right_order('agglutinate', 'white', infer = False)
+
     with open(cache_path, "bw") as f:
         pickle.dump((op_groups, op_order, specific_operators), f)
