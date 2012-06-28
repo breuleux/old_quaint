@@ -22,6 +22,8 @@ copied or merged.
 
 ## Identified data types
 
+TODO: motivation
+
 Identified data types differ from functional data types by the fact
 that they are attached to an identifier that identifies them either
 locally or on the whole network. Two such objects are the same if and
@@ -163,7 +165,7 @@ rooted at the object.
   instead.
 
 
-## Mini-heaps
+## Mini-heaps (byte vector)
 
 A basic datatype provided is the *miniheap*: a miniheap is a bit or
 byte-addressable portion of memory. In order to help with memory usage
@@ -293,6 +295,77 @@ collection the client can ask the server to reroot the references
 original root anymore. It can also come with a performance hit, since
 the reference is indirect, but the alternative is memory bloat in the
 form of spurious ids.
+
+### Examples
+
+1. Dispatching different rows of a matrix to different nodes. We
+   assume that the matrix is represented as a vector of references to
+   rows. The idea is that all the nodes will have access to the full
+   matrix, but only certain rows will be local to them:
+
+        def all[object, seen = set[]]:
+            ;; Yield all references accessible from the object
+            if not (object in seen):
+                yield object
+                seen.add[object]
+                for [k, v] in decompose[object]:
+                    yield all[v, seen]
+                    
+        def fromrange[i, j][root]:
+            ;; Yield all references accessible from object[i..j]
+            yield root
+            for [k, v] in decompose[root]:
+                if i <= k < j:
+                    yield all[v]
+
+        var n = 10
+        var blocksize = matrix.length / n
+        for i in 0..n-1:
+            send[node[i],
+                 matrix,
+                 fromrange[i*blocksize, (i+1)*blocksize]]
+
+   The extent function given receives a root object as a parameter and
+   yields all objects to produce. `decompose[x]` returns an indexed
+   list of references contained in the object `x`. If `x` is a
+   closure, this will crack it open and yield a reference to the
+   closure code and to all of the closure's references.
+   
+   The function is evaluated in the dynamic environment of the call to
+   send.
+
+
+2. Same example but done from the remote node:
+
+        var [matrix, start, end] = server_port.next[]
+        acquire[matrix,
+                fromrange[start, end]]
+        process[matrix]
+
+   The `fromrange[start, end]` closure is sent over to the server and
+   executed there in a specific dynamic environment. Since that
+   environment could technically be used for privilege escalation (a
+   process with access to a port may be able to execute code locally
+   in that environment by injecting an extent function), it is by
+   default completely empty?
+
+
+3. ...
+
+        var [rd, wr] = make_keys[2]
+        def treenode[left, right]:
+            var this = mutable_record[parent = nil
+                                      left = left
+                                      right = right]
+            (left.parent = wrap[this, rd, wr]) !! nil
+            (right.parent = wrap[this, rd, wr]) !! nil
+        var a = treenode[1, 2]
+        var b = treenode[a, 3]
+        print[b.parent] ;; error
+        let (@keychain = @keychain ++ [rd, wr]):
+            print[b.parent] ;; ok
+        remote <- b ;; other side can't read b's parent
+
 
 
 
